@@ -1,5 +1,6 @@
 package burst.pool.miners;
 
+import io.reactivex.disposables.Disposable;
 import signumj.crypto.SignumCrypto;
 import signumj.entity.SignumAddress;
 import signumj.entity.SignumID;
@@ -7,6 +8,7 @@ import signumj.entity.SignumValue;
 import signumj.entity.response.Account;
 import signumj.entity.response.Block;
 import signumj.entity.response.MiningInfo;
+import signumj.entity.response.TransactionBroadcast;
 import signumj.service.NodeService;
 import burst.pool.entity.Payout;
 import burst.pool.entity.WonBlock;
@@ -99,37 +101,29 @@ public class MinerTracker {
 
     public void onBlockWon(StorageService transactionalStorageService, Block block, SignumValue blockReward) {
         logger.info("Block won! Block height: " + block.getHeight() + ", forger: " + block.getGenerator().getFullAddress());
-
         SignumValue reward = blockReward;
-        
         Miner winningMiner = getOrCreate(transactionalStorageService, block.getGenerator());
 
+        //winningMiner.getSharePercent()等于（1- winnerRewardPercentage）* 100
         // Take pool fee
         float feePercentage = propertyService.getFloat(Props.poolFeePercentage);
         if(winningMiner.getSharePercent() < 20) {
             // charge the solo fee
             feePercentage = propertyService.getFloat(Props.poolSoloFeePercentage);
         }
-        
         SignumValue poolTake = reward.multiply(feePercentage);
         reward = reward.subtract(poolTake);
         PoolFeeRecipient poolFeeRecipient = transactionalStorageService.getPoolFeeRecipient();
         poolFeeRecipient.increasePending(poolTake, null);
-        
         PoolFeeRecipient donationRecipient = transactionalStorageService.getPoolDonationRecipient();
-
         // Take winner share
         double winnerShare = 1.0d - winningMiner.getSharePercent()/100d;
         SignumValue winnerTake = reward.multiply(winnerShare);
         winningMiner.increasePending(winnerTake, donationRecipient);
         reward = reward.subtract(winnerTake);
-        
         transactionalStorageService.addWonBlock(new WonBlock((int) block.getHeight(), block.getId(), block.getGenerator(), block.getNonce(), blockReward, reward));
-
         List<Miner> miners = transactionalStorageService.getMiners();
-
         updateMiners(transactionalStorageService, block);
-
         // Update each miner's pending
         AtomicReference<SignumValue> amountTaken = new AtomicReference<>(SignumValue.fromSigna(0));
         SignumValue poolReward = reward;
@@ -144,6 +138,7 @@ public class MinerTracker {
             }
             miners.forEach(miner -> miner.increasePending(amountRemainingEach, donationRecipient));
         }
+
 
         logger.info("Finished processing winnings for block " + block.getHeight() + ". Reward ( + fees) is " + blockReward + ", pool fee is " + poolTake + ", forger take is " + winnerTake + ", miners took " + amountTaken.get());
     }
@@ -165,9 +160,9 @@ public class MinerTracker {
         for(Miner miner : miners) {
             // Update each miner's effective capacity
             miner.recalculateCapacity(block);
-
             // Calculate pool capacity
             poolCapacity += miner.getSharedCapacity();
+
         }
 
         for(Miner miner : miners) {
@@ -178,6 +173,7 @@ public class MinerTracker {
 
     public void payoutIfNeeded(StorageService storageService, SignumValue baseTxFee, SignumValue appendageFee) {
         logger.info("Attempting payout...");
+
         if (payoutSemaphore.availablePermits() == 0) {
             logger.info("Cannot payout - payout is already in progress.");
             return;
@@ -206,6 +202,7 @@ public class MinerTracker {
             payableMinersSet.add(poolDonationRecipient);
         }
 
+
         if ((payableMinersSet.size() < 2 && propertyService.getInt(Props.minPayoutsPerTransaction) != 1) || (payableMinersSet.size() < propertyService.getInt(Props.minPayoutsPerTransaction) && payableMinersSet.size() < storageService.getMinerCount())) {
             payoutSemaphore.release();
             logger.info("Cannot payout. There are {} payable miners, required {}, miner count {}", payableMinersSet.size(), propertyService.getInt(Props.minPayoutsPerTransaction), storageService.getMinerCount());
@@ -213,11 +210,13 @@ public class MinerTracker {
         }
 
         Payable[] payableMiners = payableMinersSet.size() <= 64 ? payableMinersSet.toArray(new Payable[0]) : Arrays.copyOfRange(payableMinersSet.toArray(new Payable[0]), 0, 64);
-        
         SignumValue transactionFee = baseTxFee.add(appendageFee.multiply(payableMiners.length / 10));
 
         SignumValue transactionFeePaidPerMiner = transactionFee.divide(payableMiners.length);
         logger.info("TFPM is {}", transactionFeePaidPerMiner.toNQT());
+
+
+
         Map<Payable, SignumValue> payees = new HashMap<>(); // Does not have subtracted transaction fee
         Map<SignumAddress, SignumValue> recipients = new HashMap<>();
         StringBuilder logMessage = new StringBuilder("Paying out to miners");
@@ -229,22 +228,29 @@ public class MinerTracker {
             recipients.put(payable.getAddress(), actualPayout);
             transactionAttachment.putLong(payable.getAddress().getSignumID().getSignedLongId());
             transactionAttachment.putLong(actualPayout.toNQT().longValue());
+
+
+
             logMessage.append(", ").append(payable.getAddress().getFullAddress()).append("(").append(actualPayout.toNQT()).append("/").append(pending.toNQT()).append(")");
         }
         logger.info(logMessage.toString());
 
         byte[] publicKey = signumCrypto.getPublicKey(propertyService.getString(Props.passphrase));
 
+
         AtomicReference<SignumID> transactionId = new AtomicReference<>();
 
         Single<byte[]> transaction = null;
         if(payableMinersSet.size() == 1) {
+
             transaction = nodeService.generateTransaction(payableMiners[0].getAddress(), publicKey, payableMiners[0].getPending().subtract(transactionFee), transactionFee, 1440, null);
         }
         else {
             transaction = nodeService.generateMultiOutTransaction(publicKey, transactionFee, 1440, recipients);
         }
-        
+
+
+
         compositeDisposable.add(transaction
         .retry(propertyService.getInt(Props.payoutRetryCount))
         .map(response -> signumCrypto.signTransaction(propertyService.getString(Props.passphrase), response))
@@ -266,6 +272,7 @@ public class MinerTracker {
         .flatMap(signedBytes -> nodeService.broadcastTransaction(signedBytes)
                     .retry(propertyService.getInt(Props.payoutRetryCount)))
         .subscribe(response -> onPaidOut(storageService, transactionId.get(), payees, publicKey, transactionFee, 1440, transactionAttachment.array()), this::onPayoutError));
+
     }
 
     private void onPaidOut(StorageService storageService, SignumID transactionID, Map<Payable, SignumValue> paidMiners, byte[] senderPublicKey, SignumValue fee, int deadline, byte[] transactionAttachment) {
@@ -273,6 +280,8 @@ public class MinerTracker {
         for (Map.Entry<Payable, SignumValue> payment : paidMiners.entrySet()) {
             payment.getKey().decreasePending(payment.getValue());
         }
+
+
         storageService.addPayout(new Payout(transactionID, senderPublicKey, fee, deadline, transactionAttachment));
         logger.info("Paid out, transaction id " + transactionID);
         payoutSemaphore.release();

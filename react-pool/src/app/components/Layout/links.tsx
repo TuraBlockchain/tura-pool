@@ -28,12 +28,12 @@ export const Links: LinkProps[] = [
         url: "/miners",
         icon: <GroupIcon />,
     },
-    {
-        label: "discord",
-        url: discordUrl,
-        icon: <QuestionAnswerIcon />,
-        newWindow: true,
-    },
+    // {
+    //     label: "discord",
+    //     url: discordUrl,
+    //     icon: <QuestionAnswerIcon />,
+    //     newWindow: true,
+    // },
 ];
 
 export const NativeMenuLinks: LinkProps[] = [
@@ -43,7 +43,7 @@ export const NativeMenuLinks: LinkProps[] = [
         icon: <BarChartIcon />,
     },
     {
-        label: "Signum XT Wallet",
+        label: "Tura XT Wallet",
         url: xtWalletStoreUrl,
         icon: <ExtensionIcon />,
         newWindow: true,

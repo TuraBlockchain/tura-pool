@@ -192,7 +192,6 @@ export const PoolWonBlocks = () => {
 
                                             case "rewardAndFees":
                                                 const reward = block.reward;
-
                                                 if (
                                                     reward === "Processing..."
                                                 ) {

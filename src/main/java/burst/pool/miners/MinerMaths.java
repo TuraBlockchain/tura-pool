@@ -12,8 +12,12 @@ public class MinerMaths {
     private final double[] alphas;
 
     public MinerMaths(int nAvg, int nMin, int nGrace) {
+
         alphas = new double[nAvg];
+
+
         for (int i = 0; i < nAvg; i++) {
+
             if (i < nMin-1) {
                 alphas[i] = 0d;
             } else {

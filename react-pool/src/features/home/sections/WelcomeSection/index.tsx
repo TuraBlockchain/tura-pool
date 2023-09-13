@@ -141,35 +141,35 @@ export const WelcomeSection = () => {
                             ml: 1,
                             flex: 1,
                         }}
-                        placeholder={t("yourSignumAddressOrAccountName")}
+                        placeholder={t("yourTuraAddressOrAccountName")}
                     />
 
-                    {!isUnsafeWebsite && (
-                        <Tooltip
-                            title={`${t(
-                                isWalletConnected
-                                    ? "viewMinerDetails"
-                                    : "connectWallet"
-                            )}`}
-                            arrow
-                        >
-                            <Button
-                                variant="contained"
-                                color="error"
-                                sx={{
-                                    p: 1,
-                                    height: "100%",
-                                    borderRadius: 1,
-                                    color: "white",
-                                    mr: 1,
-                                    display: { xs: "none", lg: "flex" },
-                                }}
-                                onClick={handleClick}
-                            >
-                                <AccountBalanceWalletIcon fontSize="large" />
-                            </Button>
-                        </Tooltip>
-                    )}
+                    {/*{!isUnsafeWebsite && (*/}
+                        {/*<Tooltip*/}
+                            {/*title={`${t(*/}
+                                {/*isWalletConnected*/}
+                                    {/*? "viewMinerDetails"*/}
+                                    {/*: "connectWallet"*/}
+                            {/*)}`}*/}
+                            {/*arrow*/}
+                        {/*>*/}
+                            {/*<Button*/}
+                                {/*variant="contained"*/}
+                                {/*color="error"*/}
+                                {/*sx={{*/}
+                                    {/*p: 1,*/}
+                                    {/*height: "100%",*/}
+                                    {/*borderRadius: 1,*/}
+                                    {/*color: "white",*/}
+                                    {/*mr: 1,*/}
+                                    {/*display: { xs: "none", lg: "flex" },*/}
+                                {/*}}*/}
+                                {/*onClick={handleClick}*/}
+                            {/*>*/}
+                                {/*<AccountBalanceWalletIcon fontSize="large" />*/}
+                            {/*</Button>*/}
+                        {/*</Tooltip>*/}
+                    {/*)}*/}
 
                     <Button
                         type="submit"

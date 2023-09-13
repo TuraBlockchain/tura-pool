@@ -127,7 +127,7 @@ export const PoolDataFetcher = () => {
             formatCapacity(genesisBaseTarget / baseTarget) +
             " + " +
             formatAmount(Math.round(averageCommitmentNQT / 1e8).toFixed(2)) +
-            " SIGNA/TiB";
+            " Tura/TiB";
 
         const payload = {
             isLoading: false,

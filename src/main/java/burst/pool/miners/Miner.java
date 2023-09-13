@@ -87,19 +87,31 @@ public class Miner implements Payable {
             }
             deadlinesCount++;
             BigInteger hit = deadline.calculateHit();
-            
+
+
+
             hitSum = hitSum.add(hit);
             deadlineAverage = deadlineAverage.add(deadline.getDeadline());
-            
+
+
+
+
             double hitBoost = hit.doubleValue()/deadline.getBoostPool();
+
+
+
             hitSumBoost = hitSumBoost.add(BigInteger.valueOf((long)hitBoost));
-            
+
+
+
+
             if(deadline.getSharePercent() > 0) {
                 double hitShared = hitBoost*100.0/(deadline.getSharePercent());
                 hitSumShared = hitSumShared.add(BigInteger.valueOf((long)hitShared));
                 
                 deadlinesSharedCount++;
             }
+
 
             if(deadline.getHeight() == lastBlockHeight - 1) {
                 deadlineToSave = deadline;
@@ -131,6 +143,7 @@ public class Miner implements Payable {
         }
 
         // Store the calculated values on the DB
+
         store.setSharedCapacity(minerMaths.estimatedEffectivePlotSize(deadlinesSharedCount, hitSumShared));
         store.setTotalCapacity(estimatedCapacity);
     }
@@ -147,8 +160,10 @@ public class Miner implements Payable {
 
     @Override
     public void increasePending(SignumValue delta, Payable donationRecipient) {
+
         if(donationRecipient != null) {
             SignumValue donation = delta.multiply(store.getDonationPercent()/100d);
+
             delta = delta.subtract(donation);
             donationRecipient.increasePending(donation, null);
         }
@@ -167,6 +182,8 @@ public class Miner implements Payable {
 
     @Override
     public SignumValue takeShare(SignumValue availableReward, Payable donationRecipient) {
+
+
         SignumValue share = availableReward.multiply(store.getShare());
         increasePending(share, donationRecipient);
         return share;

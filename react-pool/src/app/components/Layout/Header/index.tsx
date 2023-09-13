@@ -99,7 +99,8 @@ export const Header = () => {
                             className={styles.linkContainer}
                             title="Go home"
                         >
-                            <img src={imgLogo} alt="Pool Logo" />
+                            {/*<img src={imgLogo} alt="Pool Logo" />*/}
+                            <img src="/assets/Tura.png" alt="Pool Logo" />
                             <Typography variant="h6">
                                 {truncateText(poolName, 20)}
                             </Typography>

@@ -57,11 +57,11 @@ export const PoolInfo = () => {
                 loading={isLoadingCurrentRound}
             />
 
-            <PoolStat
-                title={t("priceUSD")}
-                value={"$" + formatAmount(price)}
-                loading={isLoadingSignumState}
-            />
+            {/*<PoolStat*/}
+                {/*title={t("priceUSD")}*/}
+                {/*value={"$" + formatAmount(price)}*/}
+                {/*loading={isLoadingSignumState}*/}
+            {/*/>*/}
 
             <PoolStat
                 title={t("networkSize")}

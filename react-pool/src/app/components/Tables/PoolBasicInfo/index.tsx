@@ -125,7 +125,7 @@ export const PoolBasicInfo = () => {
                     <SpecificRow
                         title={t("defaultMinimumPayout")}
                         secondTitle={t("configurable")}
-                        value={defaultMinimumPayout + " SIGNA"}
+                        value={defaultMinimumPayout + " Tura"}
                     />
 
                     <SpecificRow
@@ -135,7 +135,7 @@ export const PoolBasicInfo = () => {
 
                     <SpecificRow
                         title={t("payoutTxFee")}
-                        value={poolPayoutTransactionFee + " SIGNA"}
+                        value={poolPayoutTransactionFee + " Tura"}
                     />
 
                     <SpecificRow

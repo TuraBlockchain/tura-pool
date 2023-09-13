@@ -1,5 +1,6 @@
 package burst.pool.pool;
 
+import io.reactivex.Single;
 import signumj.crypto.SignumCrypto;
 import signumj.entity.SignumAddress;
 import signumj.entity.SignumValue;
@@ -77,6 +78,10 @@ public class Pool {
         this.version = version;
         this.transactionFee.set(SignumValue.fromSigna(0.1));
         this.appendageFee.set(SignumValue.fromNQT(0));
+        String passphrase = propertyService.getString(Props.passphrase);
+        SignumAddress secondaryAddress = burstCrypto.getAddressFromPassphrase(passphrase);
+        Account balance = nodeService.getAccount(secondaryAddress, null, null, null).blockingGet();
+        //Single<Account> account = nodeService.getAccount(secondaryAddress, null, null, null);
         disposables.add(refreshMiningInfoThread());
         disposables.add(processBlocksThread());
         for (int i = 0; i < secondaryRewardRecipients.length; i++) {
@@ -132,21 +137,24 @@ public class Pool {
 
     private Completable processNextBlock() {
         return Completable.fromAction(() -> {
+
             StorageService transactionalStorageService = null;
             try {
+
                 if (miningInfo.get() == null || processBlockSemaphore.availablePermits() == 0 || miningInfo.get().getHeight() - 1 <= storageService.getLastProcessedBlock() + propertyService.getInt(Props.processLag)) {
                     return;
                 }
-                
+
                 // Leave the process blocks only a minute after starting a new round
                 // TODO: add a configuration for this
                 Duration roundDuration = Duration.between(roundStartTime.get(), Instant.now());
-                if(roundDuration.toMillis() < 60000) {
+                if(roundDuration.toMillis() < 6000) {
+
                     return;
                 }
-                
+
                 propertyService.reloadIfModified();
-                
+
                 logger.info("Started processing block {}", storageService.getLastProcessedBlock() + 1);
 
                 try {
@@ -162,14 +170,15 @@ public class Pool {
                     processBlockSemaphore.release();
                     return;
                 }
-
                 minerTracker.setCurrentlyProcessingBlock(true);
-                
                 FeeSuggestion feeSuggestion = nodeService.suggestFee().blockingGet();
                 this.transactionFee.set(feeSuggestion.getStandardFee());
                 
                 TransactionType[] txTypes = nodeService.getConstants().blockingGet().getTransactionTypes();
+
                 for(TransactionType type : txTypes) {
+
+
                     if(type.getType() == 0) {
                         for(Subtype subtype : type.getSubtypes()) {
                             if(subtype.getSubtype() == 1) {
@@ -181,17 +190,20 @@ public class Pool {
                 }
 
                 List<StoredSubmission> storedSubmissions = transactionalStorageService.getBestSubmissionsForBlock(transactionalStorageService.getLastProcessedBlock() + 1);
+
                 if (storedSubmissions == null || storedSubmissions.isEmpty()) {
                     onProcessedBlock(transactionalStorageService, false);
                     return;
                 }
-                
+
+
                 Block block = nodeService.getBlock(transactionalStorageService.getLastProcessedBlock() + 1).blockingGet();
                 
                 // Check for commands from miners (always to the primary address)
                 SignumAddress poolAddress = burstCrypto.getAddressFromPassphrase(propertyService.getString(Props.passphrase));
                 // Having 100 should be enough to not get past it
                 Transaction []txs = nodeService.getAccountTransactions(poolAddress, 0, 100, false).blockingGet();
+
                 for(Transaction tx : txs) {
                     if(tx.getBlockHeight() != block.getHeight())
                         continue;
@@ -199,7 +211,7 @@ public class Pool {
                     Miner miner = storageService.getMiner(tx.getSender());
                     if(miner == null)
                         continue;
-                    
+
                     if(tx.getAppendages()!=null && tx.getAppendages().length > 0 && tx.getRecipient().equals(poolAddress)) {
                         try {
                             String message = null;
@@ -209,6 +221,8 @@ public class Pool {
                                 PlaintextMessageAppendix appendMessage = (PlaintextMessageAppendix) append;
                                 message = appendMessage.getMessage();
                             }
+
+
                             if(message != null) {
                                 StringTokenizer tokens = new StringTokenizer(message, " ");
                                 while(tokens.hasMoreElements()) {
@@ -246,18 +260,25 @@ public class Pool {
                         }
                     }
                 }
-                
+
+
                 ArrayList<Block> ourNewBlocks = new ArrayList<>();
                 try {
-                    Block[] blocks = nodeService.getBlocks(1, propertyService.getInt(Props.processLag) - 1).blockingGet();
+                    Block[] blocks = nodeService
+                        .getBlocks(1, propertyService.getInt(Props.processLag) - 1)
+                        .blockingGet();
+
                     for(Block b : blocks) {
                         if(myRewardRecipients.contains(b.getGenerator()))
+
                             ourNewBlocks.add(b);
                     }
                 }
                 catch (Exception e) {
                     logger.error("Could not get the list of recent blocks", e);
                 }
+
+
                 recentlyForged.set(ourNewBlocks);
 
                 List<? extends Submission> submissions = transactionalStorageService.getBestSubmissionsForBlock(block.getHeight());
@@ -269,6 +290,7 @@ public class Pool {
                         }
                     }
                 }
+
                 if (won) {
                     minerTracker.onBlockWon(transactionalStorageService, block, block.getBlockReward().add(block.getRewardFee()));
                 } else {
@@ -313,15 +335,16 @@ public class Pool {
         }
         minerTracker.setCurrentlyProcessingBlock(false);
         processBlockSemaphore.release();
+
         if (actuallyProcessed) {
             minerTracker.payoutIfNeeded(storageService, transactionFee.get(), appendageFee.get());
         }
-        
         logger.info("Finished processing block {}", storageService.getLastProcessedBlock());
     }
 
     private void resetRound(MiningInfo newMiningInfo) {
-        
+
+
         // Traffic flow - we want to stop new requests but let old ones finish before we go ahead.
         try {
             // Lock the reset round semaphore to stop accepting new requests

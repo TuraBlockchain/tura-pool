@@ -355,10 +355,12 @@ public class DbStorageService implements StorageService {
                     .where(POOL_STATE.KEY.eq(POOL_STATE_LAST_PROCESSED_BLOCK))
                     .fetchAny(result -> Integer.parseInt(result.get(POOL_STATE.VALUE)))));
         } catch (NullPointerException e) {
+
             int height = (int) burstNodeService.getMiningInfo().blockingFirst().getHeight() - ((propertyService.getInt(Props.processLag) + propertyService.getInt(Props.nAvg)) * 2);
             if (height < 0) height = 0;
             setLastProcessedBlock(height);
             return height;
+
         }
     }
 
